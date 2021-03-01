@@ -170,26 +170,64 @@ class QuestionResultsViewTests(TestCase):
         self.assertContains(response, past_question.question_text)
 
 
-class TestVisibilityUnpublishedQuestions(TestCase):
-    def create_ordinary_user(self):
-        self.user = User.objects.create_user(username='user', password='userpassword')
+class AdminTests(TestCase):
+    def setUp(self):
+        self.superuser = get_user_model().objects.create_superuser(username='admin', password='adminpassword')
+        self.superuser.save()
     
-    def create_superuser(self):
-        self.user = User.objects.create_superuser(username='admin', password='adminpassword')
 
-    # c = Client()
+    def test_superuser_can_see_future_question_with_choice(self):
+    """
+    Future question should be displayed for logged in superusers.
+    """
 
-    # c.login(username=my_admin.username, password=password)
-    # Client().login(username=)
+    q = create_question(question_text='Future question.', days=30)
+
+    q.choice_set.create(choice_text="Choice for Future question.", votes=0)
+
+    self.client.force_login(self.user)
+
+    response = self.client.get(reverse('polls:index'))
+
+    self.assertQuerysetEqual(
+        response.context['latest_question_list'],
+        ['<Question: Future question.>']
+    )
 
 
-
-    def test_ordinary_user_can_see_past_question_without_choices(self):
+    def test_superuser_can_see_past_question_without_choices(self):
         """
-        A question without choices should not be displayed for ordinary users.
+        A question without choices should be displayed for logged in superusers.
         """
 
-        create_question(question_text="Past question.", days=-30)
+        create_question(question_text='Past question.', days=-30)
+        
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse('polls:index'))
+
+        self.assertQuerysetEqual(
+            response.context['latest_question_list'],
+            ['<Question: Past question.>']
+        )
+
+
+class LoggedUserTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username='user', password='userpassword')
+        self.user.save()
+
+
+    def test_logged_user_can_see_future_question_with_choice(self):
+        """
+        Future question should not be displayed for ordinary logged in users.
+        """
+
+        q = create_question(question_text='Future question.', days=30)
+
+        q.choice_set.create(choice_text="Choice for Future question.", votes=0)
+
+        self.client.force_login(self.user)
 
         response = self.client.get(reverse('polls:index'))
 
@@ -210,23 +248,7 @@ class TestVisibilityUnpublishedQuestions(TestCase):
         self.assertQuerysetEqual(response.context['latest_question_list'],[])
 
 
-    def test_superuser_can_see_past_question_without_choices(self):
-        """
-        A question without choices should be displayed for logged in superusers.
-        """
-
-        create_question(question_text='Past question.', days=-30)
-        
-        self.client.force_login(self.user)
-
-        response = self.client.get(reverse('polls:index'))
-
-        self.assertQuerysetEqual(
-            response.context['latest_question_list'],
-            ['<Question: Past question.>']
-        )
-
-
+class AnonymousUserTests(TestCase):
     def test_ordinary_user_can_see_future_question_with_choice(self):
         """
         Future question should not be displayed for ordinary users.
@@ -239,38 +261,14 @@ class TestVisibilityUnpublishedQuestions(TestCase):
         response = self.client.get(reverse('polls:index'))
 
         self.assertQuerysetEqual(response.context['latest_question_list'], [])
-    
 
-    def test_logged_user_can_see_future_question_with_choice(self):
-        """
-        Future question should not be displayed for ordinary logged in users.
-        """
+    def test_ordinary_user_can_see_past_question_without_choices(self):
+            """
+            A question without choices should not be displayed for ordinary users.
+            """
 
-        q = create_question(question_text='Future question.', days=30)
+            create_question(question_text="Past question.", days=-30)
 
-        q.choice_set.create(choice_text="Choice for Future question.", votes=0)
+            response = self.client.get(reverse('polls:index'))
 
-        self.client.force_login(self.user)
-
-        response = self.client.get(reverse('polls:index'))
-
-        self.assertQuerysetEqual(response.context['latest_question_list'], [])
-
-
-    def test_superuser_can_see_future_question_with_choice(self):
-        """
-        Future question should be displayed for logged in superusers.
-        """
-
-        q = create_question(question_text='Future question.', days=30)
-
-        q.choice_set.create(choice_text="Choice for Future question.", votes=0)
-
-        self.client.force_login(self.user)
-
-        response = self.client.get(reverse('polls:index'))
-
-        self.assertQuerysetEqual(
-            response.context['latest_question_list'],
-            ['<Question: Future question.>']
-        )
+            self.assertQuerysetEqual(response.context['latest_question_list'], [])
