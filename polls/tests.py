@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.utils import timezone
 from django.urls import reverse
 
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
 from django.test.client import Client
 
@@ -86,7 +87,10 @@ class QuestionIndexViewTests(TestCase):
 
         response = self.client.get(reverse('polls:index'))
         self.assertContains(response, "No polls are available.")
-        self.assertQuerysetEqual(response.context['latest_question_list'], [])
+        self.assertQuerysetEqual(
+            response.context['latest_question_list'], 
+            []
+        )
 
     def test_future_question_and_past_question_with_choice(self):
         """
@@ -127,7 +131,10 @@ class QuestionIndexViewTests(TestCase):
         create_question(question_text="Question without choices", days=-30)
         response = self.client.get(reverse('polls:index'))
         self.assertContains(response, "No polls are available.")
-        self.assertQuerysetEqual(response.context['latest_question_list'], [])
+        self.assertQuerysetEqual(
+            response.context['latest_question_list'], 
+            []
+        )
 
 
 class QuestionDetailViewTests(TestCase):
@@ -177,22 +184,22 @@ class AdminTests(TestCase):
     
 
     def test_superuser_can_see_future_question_with_choice(self):
-    """
-    Future question should be displayed for logged in superusers.
-    """
+        """
+        Future question should be displayed for logged in superusers.
+        """
 
-    q = create_question(question_text='Future question.', days=30)
+        q = create_question(question_text='Future question.', days=30)
 
-    q.choice_set.create(choice_text="Choice for Future question.", votes=0)
+        q.choice_set.create(choice_text="Choice for Future question.", votes=0)
 
-    self.client.force_login(self.user)
+        self.client.force_login(self.superuser)
 
-    response = self.client.get(reverse('polls:index'))
+        response = self.client.get(reverse('polls:index'))
 
-    self.assertQuerysetEqual(
-        response.context['latest_question_list'],
-        ['<Question: Future question.>']
-    )
+        self.assertQuerysetEqual(
+            response.context['latest_question_list'],
+            ['<Question: Future question.>']
+        )
 
 
     def test_superuser_can_see_past_question_without_choices(self):
@@ -202,7 +209,7 @@ class AdminTests(TestCase):
 
         create_question(question_text='Past question.', days=-30)
         
-        self.client.force_login(self.user)
+        self.client.force_login(self.superuser)
 
         response = self.client.get(reverse('polls:index'))
 
@@ -231,7 +238,10 @@ class LoggedUserTests(TestCase):
 
         response = self.client.get(reverse('polls:index'))
 
-        self.assertQuerysetEqual(response.context['latest_question_list'], [])
+        self.assertQuerysetEqual(
+            response.context['latest_question_list'],
+            []
+        )
 
 
     def test_logged_user_can_see_past_question_without_choices(self):
@@ -245,7 +255,10 @@ class LoggedUserTests(TestCase):
 
         response = self.client.get(reverse('polls:index'))
 
-        self.assertQuerysetEqual(response.context['latest_question_list'],[])
+        self.assertQuerysetEqual(
+            response.context['latest_question_list'], 
+            []
+        )
 
 
 class AnonymousUserTests(TestCase):
@@ -260,15 +273,21 @@ class AnonymousUserTests(TestCase):
 
         response = self.client.get(reverse('polls:index'))
 
-        self.assertQuerysetEqual(response.context['latest_question_list'], [])
+        self.assertQuerysetEqual(
+            response.context['latest_question_list'], 
+            []
+        )
 
     def test_ordinary_user_can_see_past_question_without_choices(self):
-            """
-            A question without choices should not be displayed for ordinary users.
-            """
+        """
+        A question without choices should not be displayed for ordinary users.
+        """
 
-            create_question(question_text="Past question.", days=-30)
+        create_question(question_text="Past question.", days=-30)
 
-            response = self.client.get(reverse('polls:index'))
+        response = self.client.get(reverse('polls:index'))
 
-            self.assertQuerysetEqual(response.context['latest_question_list'], [])
+        self.assertQuerysetEqual(
+            response.context['latest_question_list'], 
+            []
+        )
